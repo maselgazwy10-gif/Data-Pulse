@@ -3,586 +3,473 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineering Data Pulse (Smart Search)</title>
+    <title>Engineering Data Pulse</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.2s ease-out forwards; }
+        /* Custom scrollbar for better look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Animation classes */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="min-h-screen bg-gray-50 text-slate-800 font-sans p-4 md:p-8">
 
-    <div id="root"></div>
+    <div class="max-w-3xl mx-auto">
+        
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
+                ENGINEERING <span class="text-blue-600">DATA PULSE</span>
+            </h1>
+            <p class="text-slate-500 text-sm mb-3">
+                Standard Reference for Campus Pulse Engineers
+            </p>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLScNmT_XVHhWN_9nLpIXzPuef7tJm-bJKC4FQF5vC9-TTzR2Og/viewform?usp=publish-editor" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors">
+                <i data-lucide="message-square-plus" class="w-3 h-3"></i> Give Feedback
+            </a>
+        </div>
 
-    <script type="text/babel">
-        const { useState, useMemo } = React;
+        <div class="flex rounded-xl bg-white shadow-sm p-1 mb-6 border border-gray-200">
+            <button onclick="setMode('ic')" id="tab-ic" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-200 bg-blue-600 text-white shadow-md">
+                <i data-lucide="cpu" class="w-4 h-4"></i> IC CHIPS
+            </button>
+            <button onclick="setMode('cable')" id="tab-cable" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-200 text-slate-500 hover:bg-gray-100">
+                <i data-lucide="zap" class="w-4 h-4"></i> CABLES
+            </button>
+            <button onclick="setMode('mech')" id="tab-mech" class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-200 text-slate-500 hover:bg-gray-100">
+                <i data-lucide="settings" class="w-4 h-4"></i> MECHANICAL
+            </button>
+        </div>
 
-        // ==========================================
-        // 0. ICONS (Manually defined for browser)
-        // ==========================================
-        const IconBase = ({ size = 24, children, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
-        );
-
-        const Search = (p) => <IconBase {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase>;
-        const ExternalLink = (p) => <IconBase {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></IconBase>;
-        const Database = (p) => <IconBase {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconBase>;
-        const Cpu = (p) => <IconBase {...p}><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3"/><path d="M15 1v3"/><path d="M9 20v3"/><path d="M15 20v3"/><path d="M20 9h3"/><path d="M20 14h3"/><path d="M1 9h3"/><path d="M1 14h3"/></IconBase>;
-        const Zap = (p) => <IconBase {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
-        const Settings = (p) => <IconBase {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>;
-        const ShoppingCart = (p) => <IconBase {...p}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></IconBase>;
-        const MessageSquarePlus = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></IconBase>;
-
-        // ==========================================
-        // 1. THE STORE MODULE (The Procurement Tool)
-        // ==========================================
-
-        const StoreFinder = ({ query }) => {
-          const [showStores, setShowStores] = useState(false);
-
-          // Reverse-Engineered Search URLs for Egyptian Electronics Stores
-          const stores = [
-            { 
-              name: "Makers Electronics", 
-              color: "#e60000", 
-              bg: "#fff5f5",
-              url: (q) => `https://makerselectronics.com/?s=${q}&post_type=product` 
-            },
-            { 
-              name: "RAM Electronics", 
-              color: "#005bb5", 
-              bg: "#f0f7ff",
-              url: (q) => `https://www.ram-e-shop.com/index.php?route=product/search&search=${q}` 
-            },
-            { 
-              name: "Future Electronics", 
-              color: "#ff9900", 
-              bg: "#fffbf0",
-              url: (q) => `https://store.fut-electronics.com/search?q=${q}` 
-            }
-          ];
-
-          if (!showStores) {
-            return (
-              <button 
-                onClick={() => setShowStores(true)}
-                className="w-full mt-3 py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-md flex items-center justify-center gap-2 transition-colors text-sm font-bold shadow-sm"
-              >
-                <ShoppingCart size={16} /> CHECK STORE AVAILABILITY
-              </button>
-            );
-          }
-
-          return (
-            <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-in">
-              <div className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-                Search for "{query}" at:
-              </div>
-              <div className="flex flex-col gap-2">
-                {stores.map((store, idx) => (
-                  <a 
-                    key={idx}
-                    href={store.url(query)}
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex justify-between items-center p-2 rounded border transition-all hover:shadow-md hover:-translate-y-0.5"
-                    style={{ 
-                      backgroundColor: store.bg, 
-                      borderColor: `${store.color}30`,
-                      borderLeftWidth: '4px',
-                      borderLeftColor: store.color
-                    }}
-                  >
-                    <span className="font-bold text-sm" style={{ color: '#333' }}>{store.name}</span>
-                    <span className="text-xs flex items-center gap-1 font-semibold" style={{ color: store.color }}>
-                      OPEN <ExternalLink size={12} />
-                    </span>
-                  </a>
-                ))}
-              </div>
-              <button 
-                onClick={() => setShowStores(false)}
-                className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 underline py-1"
-              >
-                Close Stores
-              </button>
+        <div class="relative mb-8 group">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
+                <i data-lucide="search" class="w-5 h-5"></i>
             </div>
-          );
+            <input type="text" id="searchInput" class="w-full pl-11 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl text-lg outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm placeholder:text-gray-300" placeholder="Search '7490', 'Arduino', 'Sensor'..." autofocus>
+        </div>
+
+        <div id="resultsContainer" class="space-y-4">
+            </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. DATA SOURCES
+        // ==========================================
+        
+        const stores = [
+            { name: "Makers Electronics", color: "#e60000", bg: "#fff5f5", url: (q) => `https://makerselectronics.com/?s=${encodeURIComponent(q)}&post_type=product` },
+            { name: "Lampatronics", color: "#000000", bg: "#f3f3f3", url: (q) => `https://lampatronics.com/?s=${encodeURIComponent(q)}&post_type=product` },
+            { name: "Future Electronics", color: "#ff9900", bg: "#fffbf0", url: (q) => `https://store.fut-electronics.com/search?q=${encodeURIComponent(q)}` }
+        ];
+
+        const icDatabase = [
+            { id: "7400", name: "Quad 2-Input NAND", fam: "TTL", cat: "Logic", desc: "Output LOW only if all inputs HIGH.", pins: 14 },
+            { id: "7402", name: "Quad 2-Input NOR", fam: "TTL", cat: "Logic", desc: "Output HIGH only if all inputs LOW.", pins: 14 },
+            { id: "7404", name: "Hex Inverter (NOT)", fam: "TTL", cat: "Logic", desc: "Inverts logic state (1->0, 0->1).", pins: 14 },
+            { id: "7408", name: "Quad 2-Input AND", fam: "TTL", cat: "Logic", desc: "Output HIGH only if all inputs HIGH.", pins: 14 },
+            { id: "7432", name: "Quad 2-Input OR", fam: "TTL", cat: "Logic", desc: "Output HIGH if any input is HIGH.", pins: 14 },
+            { id: "7486", name: "Quad 2-Input XOR", fam: "TTL", cat: "Logic", desc: "Exclusive OR. Output HIGH if inputs differ.", pins: 14 },
+            { id: "7410", name: "Triple 3-Input NAND", fam: "TTL", cat: "Logic", desc: "NAND with 3 input lines.", pins: 14 },
+            { id: "7411", name: "Triple 3-Input AND", fam: "TTL", cat: "Logic", desc: "AND with 3 input lines.", pins: 14 },
+            { id: "7420", name: "Dual 4-Input NAND", fam: "TTL", cat: "Logic", desc: "NAND with 4 input lines.", pins: 14 },
+            { id: "7421", name: "Dual 4-Input AND", fam: "TTL", cat: "Logic", desc: "AND with 4 input lines.", pins: 14 },
+            { id: "74125", name: "Quad Bus Buffer (3-State)", fam: "TTL", cat: "Buffer", desc: "Active Low enable. Used for bus isolation.", pins: 14 },
+            { id: "74126", name: "Quad Bus Buffer (3-State)", fam: "TTL", cat: "Buffer", desc: "Active High enable.", pins: 14 },
+            { id: "74244", name: "Octal Buffer/Line Driver", fam: "TTL", cat: "Buffer", desc: "8 drivers. Ideal for driving LEDs or buses.", pins: 20 },
+            { id: "74245", name: "Octal Bus Transceiver", fam: "TTL", cat: "Buffer", desc: "Bi-directional. Essential for data buses.", pins: 20 },
+            { id: "7447", name: "BCD to 7-Segment (Anode)", fam: "TTL", cat: "Decoder", desc: "Drives Common Anode LED displays.", pins: 16 },
+            { id: "7448", name: "BCD to 7-Segment (Cathode)", fam: "TTL", cat: "Decoder", desc: "Drives Common Cathode LED displays.", pins: 16 },
+            { id: "74138", name: "3-to-8 Line Decoder", fam: "TTL", cat: "Decoder", desc: "3 binary inputs -> 1 of 8 Active Low outputs.", pins: 16 },
+            { id: "74139", name: "Dual 2-to-4 Decoder", fam: "TTL", cat: "Decoder", desc: "Two independent decoders.", pins: 16 },
+            { id: "74151", name: "8-to-1 Multiplexer", fam: "TTL", cat: "Mux", desc: "Digital switch. 8 inputs -> 1 output.", pins: 16 },
+            { id: "74153", name: "Dual 4-to-1 Multiplexer", fam: "TTL", cat: "Mux", desc: "Two 4-input muxes.", pins: 16 },
+            { id: "74157", name: "Quad 2-to-1 Multiplexer", fam: "TTL", cat: "Mux", desc: "Selects between two 4-bit numbers.", pins: 16 },
+            { id: "7473", name: "Dual JK Flip-Flop", fam: "TTL", cat: "Memory", desc: "Level triggered with Clear.", pins: 14 },
+            { id: "7474", name: "Dual D-Type Flip-Flop", fam: "TTL", cat: "Memory", desc: "Edge triggered with Preset/Clear.", pins: 14 },
+            { id: "7475", name: "4-Bit Latch", fam: "TTL", cat: "Memory", desc: "Bistable latch.", pins: 16 },
+            { id: "7476", name: "Dual JK Flip-Flop", fam: "TTL", cat: "Memory", desc: "With Preset and Clear.", pins: 16 },
+            { id: "74373", name: "Octal Transparent Latch", fam: "TTL", cat: "Memory", desc: "Commonly used for address latching.", pins: 20 },
+            { id: "74374", name: "Octal D-Type Flip-Flop", fam: "TTL", cat: "Memory", desc: "Edge triggered 3-state outputs.", pins: 20 },
+            { id: "7490", name: "Decade Counter", fam: "TTL", cat: "Counter", desc: "Asynchronous Mod-10 (0-9).", pins: 14 },
+            { id: "7492", name: "Divide-by-12 Counter", fam: "TTL", cat: "Counter", desc: "Mod-12 counter.", pins: 14 },
+            { id: "7493", name: "4-Bit Binary Counter", fam: "TTL", cat: "Counter", desc: "Ripple counter Mod-16 (0-15).", pins: 14 },
+            { id: "74160", name: "Sync Decade Counter", fam: "TTL", cat: "Counter", desc: "Synchronous BCD with Clear.", pins: 16 },
+            { id: "74161", name: "Sync 4-Bit Binary Counter", fam: "TTL", cat: "Counter", desc: "Synchronous 0-15, Asynchronous Clear.", pins: 16 },
+            { id: "74163", name: "Sync 4-Bit Binary Counter", fam: "TTL", cat: "Counter", desc: "Synchronous 0-15, Synchronous Clear.", pins: 16 },
+            { id: "74190", name: "Sync Up/Down Decade", fam: "TTL", cat: "Counter", desc: "Synchronous BCD, reversible counting.", pins: 16 },
+            { id: "74191", name: "Sync Up/Down Binary", fam: "TTL", cat: "Counter", desc: "Synchronous 4-bit binary, reversible.", pins: 16 },
+            { id: "74192", name: "Up/Down Decade (Dual Clk)", fam: "TTL", cat: "Counter", desc: "Separate Up and Down clocks. BCD.", pins: 16 },
+            { id: "74193", name: "Up/Down Binary (Dual Clk)", fam: "TTL", cat: "Counter", desc: "Dual Clock (Up/Down) 4-bit binary.", pins: 16 },
+            { id: "74164", name: "8-Bit Serial-In/Parallel-Out", fam: "TTL", cat: "Register", desc: "Shift register.", pins: 14 },
+            { id: "74165", name: "8-Bit Parallel-In/Serial-Out", fam: "TTL", cat: "Register", desc: "Shift register.", pins: 16 },
+            { id: "74595", name: "8-Bit Shift Register", fam: "TTL", cat: "Register", desc: "Serial in, Parallel out + Latch. (Arduino favorite).", pins: 16 },
+            { id: "74HCT160", name: "Sync Decade Counter", fam: "HCT", cat: "Counter", desc: "Synchronous BCD, Async Reset. CMOS power, TTL Logic.", pins: 16 },
+            { id: "74HCT161", name: "Sync 4-Bit Binary Counter", fam: "HCT", cat: "Counter", desc: "Synchronous 0-15, Async Reset. CMOS power, TTL Logic.", pins: 16 },
+            { id: "74HCT163", name: "Sync 4-Bit Binary Counter", fam: "HCT", cat: "Counter", desc: "Synchronous 0-15, Sync Reset. CMOS power, TTL Logic.", pins: 16 },
+            { id: "74HCT245", name: "Octal Bus Transceiver", fam: "HCT", cat: "Buffer", desc: "Bi-directional. 3-State. CMOS power, TTL Logic.", pins: 20 },
+            { id: "74HC192", name: "Up/Down Decade Counter", fam: "HC", cat: "Counter", desc: "Dual Clock Up/Down BCD. High Speed CMOS.", pins: 16 },
+            { id: "74HC193", name: "Up/Down Binary Counter", fam: "HC", cat: "Counter", desc: "Dual Clock Up/Down 4-bit Binary. High Speed CMOS.", pins: 16 },
+            { id: "4001", name: "Quad 2-Input NOR", fam: "CMOS", cat: "Logic", desc: "CMOS version of 7402. High voltage tolerance.", pins: 14 },
+            { id: "4011", name: "Quad 2-Input NAND", fam: "CMOS", cat: "Logic", desc: "CMOS version of 7400. High voltage tolerance.", pins: 14 },
+            { id: "4017", name: "Decade Counter/Divider", fam: "CMOS", cat: "Counter", desc: "10 decoded outputs. 'Knight Rider' chip.", pins: 16 },
+            { id: "4026", name: "Counter + 7-Seg Driver", fam: "CMOS", cat: "Display", desc: "Counts and drives display directly.", pins: 16 },
+            { id: "4066", name: "Quad Bilateral Switch", fam: "CMOS", cat: "Analog", desc: "Digital switch for analog signals.", pins: 14 },
+            { id: "4060", name: "14-Stage Ripple Counter", fam: "CMOS", cat: "Counter", desc: "With built-in oscillator. Good for long delays.", pins: 16 },
+            { id: "4047", name: "Monostable/Astable Multivibrator", fam: "CMOS", cat: "Timer", desc: "Low power alternative to 555 for some apps.", pins: 14 },
+            { id: "555", name: "Timer IC", fam: "Linear", cat: "Timer", desc: "Oscillator (Astable) or Delay (Monostable).", pins: 8 },
+            { id: "556", name: "Dual Timer", fam: "Linear", cat: "Timer", desc: "Two 555s in one package.", pins: 14 },
+            { id: "741", name: "Op-Amp", fam: "Linear", cat: "OpAmp", desc: "Single general purpose Op-Amp.", pins: 8 },
+            { id: "324", name: "Quad Op-Amp", fam: "Linear", cat: "OpAmp", desc: "Low power, single supply. Ground sensing.", pins: 14 },
+            { id: "358", name: "Dual Op-Amp", fam: "Linear", cat: "OpAmp", desc: "Low power, single supply. Half of LM324.", pins: 8 },
+            { id: "386", name: "Audio Amplifier", fam: "Linear", cat: "Audio", desc: "Low voltage power amp (0.5W).", pins: 8 },
+            { id: "339", name: "Quad Comparator", fam: "Linear", cat: "OpAmp", desc: "Open collector output. Good for interfacing.", pins: 14 },
+            { id: "311", name: "Voltage Comparator", fam: "Linear", cat: "OpAmp", desc: "High speed, strobe capability.", pins: 8 },
+            { id: "7805", name: "+5V Regulator", fam: "Power", cat: "Power", desc: "Input >7V, Output 5V 1A. TO-220.", pins: 3 },
+            { id: "7809", name: "+9V Regulator", fam: "Power", cat: "Power", desc: "Input >11V, Output 9V 1A.", pins: 3 },
+            { id: "7812", name: "+12V Regulator", fam: "Power", cat: "Power", desc: "Input >14V, Output 12V 1A.", pins: 3 },
+            { id: "7905", name: "-5V Regulator", fam: "Power", cat: "Power", desc: "Negative voltage regulator.", pins: 3 },
+            { id: "LM317", name: "Adjustable Regulator", fam: "Power", cat: "Power", desc: "1.2V to 37V output. Resistor programmable.", pins: 3 },
+            { id: "ULN2003", name: "Darlington Array", fam: "Power", cat: "Driver", desc: "7-channel high current. Drives Relays/Steppers.", pins: 16 },
+            { id: "L293D", name: "H-Bridge Driver", fam: "Power", cat: "Driver", desc: "Dual DC Motor or Single Stepper control.", pins: 16 },
+            { id: "L298N", name: "Dual H-Bridge Module", fam: "Power", cat: "Module", desc: "High power motor driver (2A per channel).", pins: "Mod" },
+            { id: "ATmega328", name: "Microcontroller", fam: "AVR", cat: "MCU", desc: "8-bit MCU (Arduino Uno heart). 32K Flash.", pins: 28 },
+            { id: "ATmega16", name: "Microcontroller", fam: "AVR", cat: "MCU", desc: "Classic 40-pin MCU. 16K Flash.", pins: 40 },
+            { id: "PIC16F877A", name: "Microcontroller", fam: "PIC", cat: "MCU", desc: "Popular 40-pin PIC. Robust I/O.", pins: 40 },
+            { id: "Arduino Uno", name: "Dev Board", fam: "Arduino", cat: "Module", desc: "ATmega328P based. Standard USB interface.", pins: "Mod" },
+            { id: "Arduino Nano", name: "Dev Board", fam: "Arduino", cat: "Module", desc: "Compact breadboard friendly board.", pins: "Mod" },
+            { id: "ESP8266", name: "WiFi Module (NodeMCU)", fam: "Espressif", cat: "Module", desc: "WiFi + MCU. 3.3V logic.", pins: "Mod" },
+            { id: "ESP32", name: "WiFi+BT Module", fam: "Espressif", cat: "Module", desc: "Dual core, WiFi, Bluetooth. Powerful.", pins: "Mod" },
+            { id: "HC-SR04", name: "Ultrasonic Sensor", fam: "Sensor", cat: "Module", desc: "Distance measurement (2cm - 400cm).", pins: 4 },
+            { id: "DHT11", name: "Temp/Humidity", fam: "Sensor", cat: "Module", desc: "Digital basic sensor. Blue casing.", pins: 3 },
+            { id: "LM35", name: "Temp Sensor", fam: "Sensor", cat: "Analog", desc: "Linear output (10mV/°C). TO-92.", pins: 3 },
+            { id: "MPU6050", name: "Gyro/Accelerometer", fam: "Sensor", cat: "Module", desc: "6-axis IMU. I2C interface.", pins: 8 },
+            { id: "16x2 LCD", name: "Character Display", fam: "Display", cat: "Module", desc: "HD44780 controller. Standard blue/green.", pins: 16 },
+            { id: "BC547", name: "NPN Transistor", fam: "Discrete", cat: "BJT", desc: "General purpose NPN. 100mA.", pins: 3 },
+            { id: "2N2222", name: "NPN Transistor", fam: "Discrete", cat: "BJT", desc: "Switching NPN. 800mA.", pins: 3 },
+            { id: "IRFZ44N", name: "N-Channel MOSFET", fam: "Discrete", cat: "FET", desc: "Power MOSFET. 49A, 55V.", pins: 3 },
+            { id: "1N4007", name: "Rectifier Diode", fam: "Discrete", cat: "Diode", desc: "1000V 1A Standard recovery.", pins: 2 },
+            { id: "4N25", name: "Optocoupler", fam: "Discrete", cat: "Iso", desc: "Transistor output optoisolator.", pins: 6 }
+        ];
+
+        const cableDatabase = [
+            { id: "1x4", size: "4.0 mm²", cores: 1, type: "LV Cu/PVC", air: "37 A", ground: "53 A", drop: "7.79 mV", desc: "A/C Units, Heaters" },
+            { id: "1x6", size: "6.0 mm²", cores: 1, type: "LV Cu/PVC", air: "48 A", ground: "65 A", drop: "5.25 mV", desc: "Cookers, Main Feeds" },
+            { id: "1x10", size: "10 mm²", cores: 1, type: "LV Cu/PVC", air: "66 A", ground: "88 A", drop: "3.17 mV", desc: "Sub-panels" },
+            { id: "1x16", size: "16 mm²", cores: 1, type: "LV Cu/PVC", air: "87 A", ground: "113 A", drop: "2.03 mV", desc: "Distribution Feeders" },
+            { id: "1x25", size: "25 mm²", cores: 1, type: "LV Cu/PVC", air: "120 A", ground: "143 A", drop: "1.33 mV", desc: "Industrial" },
+            { id: "1x35", size: "35 mm²", cores: 1, type: "LV Cu/PVC", air: "150 A", ground: "171 A", drop: "0.99 mV", desc: "Industrial" },
+            { id: "1x50", size: "50 mm²", cores: 1, type: "LV Cu/PVC", air: "186 A", ground: "203 A", drop: "0.75 mV", desc: "Industrial" },
+            { id: "1x70", size: "70 mm²", cores: 1, type: "LV Cu/PVC", air: "238 A", ground: "248 A", drop: "0.55 mV", desc: "Heavy Industrial" },
+            { id: "1x95", size: "95 mm²", cores: 1, type: "LV Cu/PVC", air: "296 A", ground: "296 A", drop: "0.43 mV", desc: "Heavy Industrial" },
+            { id: "1x120", size: "120 mm²", cores: 1, type: "LV Cu/PVC", air: "346 A", ground: "337 A", drop: "0.36 mV", desc: "Heavy Industrial" },
+            { id: "1x150", size: "150 mm²", cores: 1, type: "LV Cu/PVC", air: "400 A", ground: "378 A", drop: "0.31 mV", desc: "Heavy Industrial" },
+            { id: "1x185", size: "185 mm²", cores: 1, type: "LV Cu/PVC", air: "466 A", ground: "426 A", drop: "0.27 mV", desc: "Heavy Industrial" },
+            { id: "1x240", size: "240 mm²", cores: 1, type: "LV Cu/PVC", air: "561 A", ground: "494 A", drop: "0.23 mV", desc: "Main Plant Feeder" },
+            { id: "4x1.5", size: "1.5 mm²", cores: 4, type: "LV Cu/PVC", air: "21 A", ground: "28 A", drop: "20.2 mV", desc: "Control Circuits" },
+            { id: "4x2.5", size: "2.5 mm²", cores: 4, type: "LV Cu/PVC", air: "25 A", ground: "36 A", drop: "12.4 mV", desc: "3-Phase Sockets" },
+            { id: "4x4", size: "4.0 mm²", cores: 4, type: "LV Cu/PVC", air: "36 A", ground: "46 A", drop: "7.75 mV", desc: "3-Phase Motors" },
+            { id: "4x6", size: "6.0 mm²", cores: 4, type: "LV Cu/PVC", air: "45 A", ground: "60 A", drop: "5.21 mV", desc: "3-Phase Machines" },
+            { id: "4x10", size: "10 mm²", cores: 4, type: "LV Cu/PVC", air: "61 A", ground: "79 A", drop: "3.13 mV", desc: "Elevators, Pumps" },
+            { id: "4x16", size: "16 mm²", cores: 4, type: "LV Cu/PVC", air: "83 A", ground: "99 A", drop: "2.00 mV", desc: "Risers" },
+            { id: "4x25", size: "25 mm²", cores: 4, type: "LV Cu/PVC", air: "105 A", ground: "131 A", drop: "1.30 mV", desc: "Risers" },
+            { id: "4x35", size: "35 mm²", cores: 4, type: "LV Cu/PVC", air: "129 A", ground: "158 A", drop: "0.96 mV", desc: "Factory Distribution" },
+            { id: "4x50", size: "50 mm²", cores: 4, type: "LV Cu/PVC", air: "161 A", ground: "195 A", drop: "0.73 mV", desc: "Factory Distribution" },
+            { id: "MV-35", size: "35 mm²", cores: 1, type: "MV Cu/XLPE", air: "193 A", ground: "189 A", drop: "0.48 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-50", size: "50 mm²", cores: 1, type: "MV Cu/XLPE", air: "234 A", ground: "227 A", drop: "0.45 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-70", size: "70 mm²", cores: 1, type: "MV Cu/XLPE", air: "295 A", ground: "287 A", drop: "0.43 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-95", size: "95 mm²", cores: 1, type: "MV Cu/XLPE", air: "360 A", ground: "347 A", drop: "0.41 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-120", size: "120 mm²", cores: 1, type: "MV Cu/XLPE", air: "416 A", ground: "403 A", drop: "0.40 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-150", size: "150 mm²", cores: 1, type: "MV Cu/XLPE", air: "468 A", ground: "460 A", drop: "0.39 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-185", size: "185 mm²", cores: 1, type: "MV Cu/XLPE", air: "540 A", ground: "523 A", drop: "0.38 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "MV-240", size: "240 mm²", cores: 1, type: "MV Cu/XLPE", air: "638 A", ground: "630 A", drop: "0.36 mh/km", desc: "12/20 kV Medium Voltage" },
+            { id: "AAC-16", size: "16 mm²", cores: 1, type: "AAC Bare", air: "110 A", ground: "N/A", drop: "1.79 Ω/km", desc: "Overhead 7x1.7mm" },
+            { id: "AAC-25", size: "25 mm²", cores: 1, type: "AAC Bare", air: "145 A", ground: "N/A", drop: "1.17 Ω/km", desc: "Overhead 7x2.1mm" },
+            { id: "AAC-35", size: "35 mm²", cores: 1, type: "AAC Bare", air: "180 A", ground: "N/A", drop: "0.83 Ω/km", desc: "Overhead 7x2.5mm" },
+            { id: "AAC-50", size: "50 mm²", cores: 1, type: "AAC Bare", air: "225 A", ground: "N/A", drop: "0.57 Ω/km", desc: "Overhead 7x3.0mm" },
+            { id: "AAC-70", size: "70 mm²", cores: 1, type: "AAC Bare", air: "270 A", ground: "N/A", drop: "0.43 Ω/km", desc: "Overhead 19x2.1mm" },
+            { id: "AAC-95", size: "95 mm²", cores: 1, type: "AAC Bare", air: "340 A", ground: "N/A", drop: "0.30 Ω/km", desc: "Overhead 19x2.5mm" },
+        ];
+
+        const mechDatabase = [
+            { id: "M1.6", type: "Standard", pitch: "0.35 mm", tap: "1.25 mm", clear: "1.8 mm", hex: "-" },
+            { id: "M2", type: "Standard", pitch: "0.40 mm", tap: "1.60 mm", clear: "2.2 mm", hex: "4 mm" },
+            { id: "M2.5", type: "Standard", pitch: "0.45 mm", tap: "2.05 mm", clear: "2.7 mm", hex: "5 mm" },
+            { id: "M3", type: "Standard", pitch: "0.50 mm", tap: "2.50 mm", clear: "3.4 mm", hex: "5.5 mm" },
+            { id: "M4", type: "Standard", pitch: "0.70 mm", tap: "3.30 mm", clear: "4.5 mm", hex: "7 mm" },
+            { id: "M5", type: "Standard", pitch: "0.80 mm", tap: "4.20 mm", clear: "5.5 mm", hex: "8 mm" },
+            { id: "M6", type: "Standard", pitch: "1.00 mm", tap: "5.00 mm", clear: "6.6 mm", hex: "10 mm" },
+            { id: "M8", type: "Standard", pitch: "1.25 mm", tap: "6.80 mm", clear: "9.0 mm", hex: "13 mm" },
+            { id: "M10", type: "Standard", pitch: "1.50 mm", tap: "8.50 mm", clear: "11.0 mm", hex: "17 mm" },
+            { id: "M12", type: "Standard", pitch: "1.75 mm", tap: "10.20 mm", clear: "13.5 mm", hex: "19 mm" },
+            { id: "M14", type: "Standard", pitch: "2.00 mm", tap: "12.00 mm", clear: "15.5 mm", hex: "22 mm" },
+            { id: "M16", type: "Standard", pitch: "2.00 mm", tap: "14.00 mm", clear: "17.5 mm", hex: "24 mm" },
+            { id: "M20", type: "Standard", pitch: "2.50 mm", tap: "17.50 mm", clear: "22.0 mm", hex: "30 mm" },
+            { id: "M24", type: "Standard", pitch: "3.00 mm", tap: "21.00 mm", clear: "26.0 mm", hex: "36 mm" },
+            { id: "M30", type: "Standard", pitch: "3.50 mm", tap: "26.50 mm", clear: "33.0 mm", hex: "46 mm" },
+            { id: "M8", type: "FINE", pitch: "1.00 mm", tap: "7.00 mm", clear: "9.0 mm", hex: "13 mm" },
+            { id: "M10", type: "FINE", pitch: "1.25 mm", tap: "8.80 mm", clear: "11.0 mm", hex: "17 mm" },
+            { id: "M12", type: "FINE", pitch: "1.25 mm", tap: "10.80 mm", clear: "13.5 mm", hex: "19 mm" },
+            { id: "M12", type: "FINE", pitch: "1.50 mm", tap: "10.50 mm", clear: "13.5 mm", hex: "19 mm" },
+            { id: "M14", type: "FINE", pitch: "1.50 mm", tap: "12.50 mm", clear: "15.5 mm", hex: "22 mm" },
+            { id: "M16", type: "FINE", pitch: "1.50 mm", tap: "14.50 mm", clear: "17.5 mm", hex: "24 mm" },
+            { id: "M20", type: "FINE", pitch: "1.50 mm", tap: "18.50 mm", clear: "22.0 mm", hex: "30 mm" },
+            { id: "1/4-20", type: "UNC", pitch: "20 TPI", tap: "5.1 mm", clear: "6.5 mm", hex: "7/16\"" },
+            { id: "5/16-18", type: "UNC", pitch: "18 TPI", tap: "6.6 mm", clear: "8.1 mm", hex: "1/2\"" },
+            { id: "3/8-16", type: "UNC", pitch: "16 TPI", tap: "8.0 mm", clear: "9.7 mm", hex: "9/16\"" },
+            { id: "1/2-13", type: "UNC", pitch: "13 TPI", tap: "10.8 mm", clear: "13.0 mm", hex: "3/4\"" },
+            { id: "608", type: "Bearing", pitch: "OD: 22mm", tap: "ID: 8mm", clear: "W: 7mm", hex: "Skate" },
+            { id: "6000", type: "Bearing", pitch: "OD: 26mm", tap: "ID: 10mm", clear: "W: 8mm", hex: "Std" },
+            { id: "6001", type: "Bearing", pitch: "OD: 28mm", tap: "ID: 12mm", clear: "W: 8mm", hex: "Std" },
+            { id: "6002", type: "Bearing", pitch: "OD: 32mm", tap: "ID: 15mm", clear: "W: 9mm", hex: "Std" },
+            { id: "6003", type: "Bearing", pitch: "OD: 35mm", tap: "ID: 17mm", clear: "W: 10mm", hex: "Std" },
+            { id: "6200", type: "Bearing", pitch: "OD: 30mm", tap: "ID: 10mm", clear: "W: 9mm", hex: "Hvy" },
+        ];
+
+        // ==========================================
+        // 2. STATE & HELPER FUNCTIONS
+        // ==========================================
+        
+        let currentMode = 'ic';
+        let searchQuery = '';
+
+        const activeStyles = {
+            ic: { bg: 'bg-blue-600', border: 'border-l-blue-600', text: 'text-blue-600', light: 'bg-blue-50' },
+            cable: { bg: 'bg-orange-600', border: 'border-l-orange-600', text: 'text-orange-600', light: 'bg-orange-50' },
+            mech: { bg: 'bg-emerald-600', border: 'border-l-emerald-600', text: 'text-emerald-600', light: 'bg-emerald-50' }
         };
 
-        // ==========================================
-        // 2. THE MASTER DATABASES (EXPANDED)
-        // ==========================================
+        function setMode(mode) {
+            currentMode = mode;
+            updateTabStyles();
+            updatePlaceholder();
+            renderResults();
+        }
 
-        // --- A. IC CHIPS & MODULES (Standard Lab Inventory) ---
-        const icDatabase = [
-          // --- 7400 SERIES LOGIC (GATES) ---
-          { id: "7400", name: "Quad 2-Input NAND", fam: "TTL", cat: "Logic", desc: "Output LOW only if all inputs HIGH.", pins: 14 },
-          { id: "7402", name: "Quad 2-Input NOR", fam: "TTL", cat: "Logic", desc: "Output HIGH only if all inputs LOW.", pins: 14 },
-          { id: "7404", name: "Hex Inverter (NOT)", fam: "TTL", cat: "Logic", desc: "Inverts logic state (1->0, 0->1).", pins: 14 },
-          { id: "7408", name: "Quad 2-Input AND", fam: "TTL", cat: "Logic", desc: "Output HIGH only if all inputs HIGH.", pins: 14 },
-          { id: "7432", name: "Quad 2-Input OR", fam: "TTL", cat: "Logic", desc: "Output HIGH if any input is HIGH.", pins: 14 },
-          { id: "7486", name: "Quad 2-Input XOR", fam: "TTL", cat: "Logic", desc: "Exclusive OR. Output HIGH if inputs differ.", pins: 14 },
-          { id: "7410", name: "Triple 3-Input NAND", fam: "TTL", cat: "Logic", desc: "NAND with 3 input lines.", pins: 14 },
-          { id: "7411", name: "Triple 3-Input AND", fam: "TTL", cat: "Logic", desc: "AND with 3 input lines.", pins: 14 },
-          { id: "7420", name: "Dual 4-Input NAND", fam: "TTL", cat: "Logic", desc: "NAND with 4 input lines.", pins: 14 },
-          { id: "7421", name: "Dual 4-Input AND", fam: "TTL", cat: "Logic", desc: "AND with 4 input lines.", pins: 14 },
-          
-          // --- 7400 SERIES BUFFERS & DRIVERS ---
-          { id: "74125", name: "Quad Bus Buffer (3-State)", fam: "TTL", cat: "Buffer", desc: "Active Low enable. Used for bus isolation.", pins: 14 },
-          { id: "74126", name: "Quad Bus Buffer (3-State)", fam: "TTL", cat: "Buffer", desc: "Active High enable.", pins: 14 },
-          { id: "74244", name: "Octal Buffer/Line Driver", fam: "TTL", cat: "Buffer", desc: "8 drivers. Ideal for driving LEDs or buses.", pins: 20 },
-          { id: "74245", name: "Octal Bus Transceiver", fam: "TTL", cat: "Buffer", desc: "Bi-directional. Essential for data buses.", pins: 20 },
-          
-          // --- 7400 SERIES DECODERS & MUX ---
-          { id: "7447", name: "BCD to 7-Segment (Anode)", fam: "TTL", cat: "Decoder", desc: "Drives Common Anode LED displays.", pins: 16 },
-          { id: "7448", name: "BCD to 7-Segment (Cathode)", fam: "TTL", cat: "Decoder", desc: "Drives Common Cathode LED displays.", pins: 16 },
-          { id: "74138", name: "3-to-8 Line Decoder", fam: "TTL", cat: "Decoder", desc: "3 binary inputs -> 1 of 8 Active Low outputs.", pins: 16 },
-          { id: "74139", name: "Dual 2-to-4 Decoder", fam: "TTL", cat: "Decoder", desc: "Two independent decoders.", pins: 16 },
-          { id: "74151", name: "8-to-1 Multiplexer", fam: "TTL", cat: "Mux", desc: "Digital switch. 8 inputs -> 1 output.", pins: 16 },
-          { id: "74153", name: "Dual 4-to-1 Multiplexer", fam: "TTL", cat: "Mux", desc: "Two 4-input muxes.", pins: 16 },
-          { id: "74157", name: "Quad 2-to-1 Multiplexer", fam: "TTL", cat: "Mux", desc: "Selects between two 4-bit numbers.", pins: 16 },
+        function updateTabStyles() {
+            ['ic', 'cable', 'mech'].forEach(mode => {
+                const btn = document.getElementById(`tab-${mode}`);
+                if (mode === currentMode) {
+                    btn.className = `flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${activeStyles[mode].bg} text-white shadow-md`;
+                } else {
+                    btn.className = `flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-200 text-slate-500 hover:bg-gray-100`;
+                }
+            });
+        }
 
-          // --- 7400 SERIES FLIP-FLOPS & LATCHES ---
-          { id: "7473", name: "Dual JK Flip-Flop", fam: "TTL", cat: "Memory", desc: "Level triggered with Clear.", pins: 14 },
-          { id: "7474", name: "Dual D-Type Flip-Flop", fam: "TTL", cat: "Memory", desc: "Edge triggered with Preset/Clear.", pins: 14 },
-          { id: "7475", name: "4-Bit Latch", fam: "TTL", cat: "Memory", desc: "Bistable latch.", pins: 16 },
-          { id: "7476", name: "Dual JK Flip-Flop", fam: "TTL", cat: "Memory", desc: "With Preset and Clear.", pins: 16 },
-          { id: "74373", name: "Octal Transparent Latch", fam: "TTL", cat: "Memory", desc: "Commonly used for address latching.", pins: 20 },
-          { id: "74374", name: "Octal D-Type Flip-Flop", fam: "TTL", cat: "Memory", desc: "Edge triggered 3-state outputs.", pins: 20 },
+        function updatePlaceholder() {
+            const input = document.getElementById('searchInput');
+            if (currentMode === 'ic') input.placeholder = "Search '7490', 'Arduino', 'Sensor'...";
+            else if (currentMode === 'cable') input.placeholder = "Search '35mm', 'MV', 'Overhead'...";
+            else input.placeholder = "Search 'M6', 'UNC', 'Bearing'...";
+        }
 
-          // --- 7400 SERIES COUNTERS & REGISTERS ---
-          { id: "7490", name: "Decade Counter", fam: "TTL", cat: "Counter", desc: "Asynchronous Mod-10 (0-9).", pins: 14 },
-          { id: "7492", name: "Divide-by-12 Counter", fam: "TTL", cat: "Counter", desc: "Mod-12 counter.", pins: 14 },
-          { id: "7493", name: "4-Bit Binary Counter", fam: "TTL", cat: "Counter", desc: "Ripple counter Mod-16 (0-15).", pins: 14 },
-          { id: "74160", name: "Sync Decade Counter", fam: "TTL", cat: "Counter", desc: "Synchronous BCD with Clear.", pins: 16 },
-          { id: "74161", name: "Sync 4-Bit Binary Counter", fam: "TTL", cat: "Counter", desc: "Synchronous 0-15, Asynchronous Clear.", pins: 16 },
-          { id: "74163", name: "Sync 4-Bit Binary Counter", fam: "TTL", cat: "Counter", desc: "Synchronous 0-15, Synchronous Clear.", pins: 16 },
-          { id: "74190", name: "Sync Up/Down Decade Counter", fam: "TTL", cat: "Counter", desc: "Synchronous BCD, reversible counting.", pins: 16 },
-          { id: "74191", name: "Sync Up/Down Binary Counter", fam: "TTL", cat: "Counter", desc: "Synchronous 4-bit binary, reversible.", pins: 16 },
-          { id: "74192", name: "Up/Down Decade Counter", fam: "TTL", cat: "Counter", desc: "Dual Clock (Up/Down) BCD counter.", pins: 16 },
-          { id: "74193", name: "Up/Down Binary Counter", fam: "TTL", cat: "Counter", desc: "Dual Clock (Up/Down) 4-bit binary counter.", pins: 16 },
-          { id: "74164", name: "8-Bit Serial-In/Parallel-Out", fam: "TTL", cat: "Register", desc: "Shift register.", pins: 14 },
-          { id: "74165", name: "8-Bit Parallel-In/Serial-Out", fam: "TTL", cat: "Register", desc: "Shift register.", pins: 16 },
-          { id: "74595", name: "8-Bit Shift Register", fam: "TTL", cat: "Register", desc: "Serial in, Parallel out + Latch. (Arduino favorite).", pins: 16 },
-          
-          // --- HCT SERIES (High Speed CMOS) ---
-          { id: "74HCT160", name: "Sync Decade Counter", fam: "HCT", cat: "Counter", desc: "Synchronous BCD, Asynchronous Reset. CMOS power, TTL Logic.", pins: 16 },
-          { id: "74HCT161", name: "Sync 4-Bit Binary Counter", fam: "HCT", cat: "Counter", desc: "Synchronous 0-15, Asynchronous Reset. CMOS power, TTL Logic.", pins: 16 },
-          { id: "74HCT163", name: "Sync 4-Bit Binary Counter", fam: "HCT", cat: "Counter", desc: "Synchronous 0-15, Synchronous Reset. CMOS power, TTL Logic.", pins: 16 },
-          { id: "74HCT245", name: "Octal Bus Transceiver", fam: "HCT", cat: "Buffer", desc: "Bi-directional. 3-State. CMOS power, TTL Logic.", pins: 20 },
-
-          // --- CMOS 4000 SERIES ---
-          { id: "4001", name: "Quad 2-Input NOR", fam: "CMOS", cat: "Logic", desc: "CMOS version of 7402. High voltage tolerance.", pins: 14 },
-          { id: "4011", name: "Quad 2-Input NAND", fam: "CMOS", cat: "Logic", desc: "CMOS version of 7400. High voltage tolerance.", pins: 14 },
-          { id: "4017", name: "Decade Counter/Divider", fam: "CMOS", cat: "Counter", desc: "10 decoded outputs. 'Knight Rider' chip.", pins: 16 },
-          { id: "4026", name: "Counter + 7-Seg Driver", fam: "CMOS", cat: "Display", desc: "Counts and drives display directly.", pins: 16 },
-          { id: "4066", name: "Quad Bilateral Switch", fam: "CMOS", cat: "Analog", desc: "Digital switch for analog signals.", pins: 14 },
-          { id: "4060", name: "14-Stage Ripple Counter", fam: "CMOS", cat: "Counter", desc: "With built-in oscillator. Good for long delays.", pins: 16 },
-          { id: "4047", name: "Monostable/Astable Multivibrator", fam: "CMOS", cat: "Timer", desc: "Low power alternative to 555 for some apps.", pins: 14 },
-
-          // --- LINEAR / OP-AMPS ---
-          { id: "555", name: "Timer IC", fam: "Linear", cat: "Timer", desc: "Oscillator (Astable) or Delay (Monostable).", pins: 8 },
-          { id: "556", name: "Dual Timer", fam: "Linear", cat: "Timer", desc: "Two 555s in one package.", pins: 14 },
-          { id: "741", name: "Op-Amp", fam: "Linear", cat: "OpAmp", desc: "Single general purpose Op-Amp.", pins: 8 },
-          { id: "324", name: "Quad Op-Amp", fam: "Linear", cat: "OpAmp", desc: "Low power, single supply. Ground sensing.", pins: 14 },
-          { id: "358", name: "Dual Op-Amp", fam: "Linear", cat: "OpAmp", desc: "Low power, single supply. Half of LM324.", pins: 8 },
-          { id: "386", name: "Audio Amplifier", fam: "Linear", cat: "Audio", desc: "Low voltage power amp (0.5W).", pins: 8 },
-          { id: "339", name: "Quad Comparator", fam: "Linear", cat: "OpAmp", desc: "Open collector output. Good for interfacing.", pins: 14 },
-          { id: "311", name: "Voltage Comparator", fam: "Linear", cat: "OpAmp", desc: "High speed, strobe capability.", pins: 8 },
-
-          // --- POWER / REGULATORS / DRIVERS ---
-          { id: "7805", name: "+5V Regulator", fam: "Power", cat: "Power", desc: "Input >7V, Output 5V 1A. TO-220.", pins: 3 },
-          { id: "7809", name: "+9V Regulator", fam: "Power", cat: "Power", desc: "Input >11V, Output 9V 1A.", pins: 3 },
-          { id: "7812", name: "+12V Regulator", fam: "Power", cat: "Power", desc: "Input >14V, Output 12V 1A.", pins: 3 },
-          { id: "7905", name: "-5V Regulator", fam: "Power", cat: "Power", desc: "Negative voltage regulator.", pins: 3 },
-          { id: "LM317", name: "Adjustable Regulator", fam: "Power", cat: "Power", desc: "1.2V to 37V output. Resistor programmable.", pins: 3 },
-          { id: "ULN2003", name: "Darlington Array", fam: "Power", cat: "Driver", desc: "7-channel high current. Drives Relays/Steppers.", pins: 16 },
-          { id: "L293D", name: "H-Bridge Driver", fam: "Power", cat: "Driver", desc: "Dual DC Motor or Single Stepper control.", pins: 16 },
-          { id: "L298N", name: "Dual H-Bridge Module", fam: "Power", cat: "Module", desc: "High power motor driver (2A per channel).", pins: "Mod" },
-
-          // --- MICROCONTROLLERS & MODULES ---
-          { id: "ATmega328", name: "Microcontroller", fam: "AVR", cat: "MCU", desc: "8-bit MCU (Arduino Uno heart). 32K Flash.", pins: 28 },
-          { id: "ATmega16", name: "Microcontroller", fam: "AVR", cat: "MCU", desc: "Classic 40-pin MCU. 16K Flash.", pins: 40 },
-          { id: "PIC16F877A", name: "Microcontroller", fam: "PIC", cat: "MCU", desc: "Popular 40-pin PIC. Robust I/O.", pins: 40 },
-          { id: "Arduino Uno", name: "Dev Board", fam: "Arduino", cat: "Module", desc: "ATmega328P based. Standard USB interface.", pins: "Mod" },
-          { id: "Arduino Nano", name: "Dev Board", fam: "Arduino", cat: "Module", desc: "Compact breadboard friendly board.", pins: "Mod" },
-          { id: "ESP8266", name: "WiFi Module (NodeMCU)", fam: "Espressif", cat: "Module", desc: "WiFi + MCU. 3.3V logic.", pins: "Mod" },
-          { id: "ESP32", name: "WiFi+BT Module", fam: "Espressif", cat: "Module", desc: "Dual core, WiFi, Bluetooth. Powerful.", pins: "Mod" },
-          
-          // --- SENSORS & DISCRETES ---
-          { id: "HC-SR04", name: "Ultrasonic Sensor", fam: "Sensor", cat: "Module", desc: "Distance measurement (2cm - 400cm).", pins: 4 },
-          { id: "DHT11", name: "Temp/Humidity", fam: "Sensor", cat: "Module", desc: "Digital basic sensor. Blue casing.", pins: 3 },
-          { id: "LM35", name: "Temp Sensor", fam: "Sensor", cat: "Analog", desc: "Linear output (10mV/°C). TO-92.", pins: 3 },
-          { id: "MPU6050", name: "Gyro/Accelerometer", fam: "Sensor", cat: "Module", desc: "6-axis IMU. I2C interface.", pins: 8 },
-          { id: "16x2 LCD", name: "Character Display", fam: "Display", cat: "Module", desc: "HD44780 controller. Standard blue/green.", pins: 16 },
-          { id: "BC547", name: "NPN Transistor", fam: "Discrete", cat: "BJT", desc: "General purpose NPN. 100mA.", pins: 3 },
-          { id: "2N2222", name: "NPN Transistor", fam: "Discrete", cat: "BJT", desc: "Switching NPN. 800mA.", pins: 3 },
-          { id: "IRFZ44N", name: "N-Channel MOSFET", fam: "Discrete", cat: "FET", desc: "Power MOSFET. 49A, 55V.", pins: 3 },
-          { id: "1N4007", name: "Rectifier Diode", fam: "Discrete", cat: "Diode", desc: "1000V 1A Standard recovery.", pins: 2 },
-          { id: "4N25", name: "Optocoupler", fam: "Discrete", cat: "Iso", desc: "Transistor output optoisolator.", pins: 6 }
-        ];
-
-        // --- B. CABLE DATA (Elsewedy Catalogue Extracted) ---
-        const cableDatabase = [
-          // --- LOW VOLTAGE (0.6/1 kV) SINGLE CORE PVC ---
-          { id: "1x4", size: "4.0 mm²", cores: 1, type: "LV Cu/PVC", air: "37 A", ground: "53 A", drop: "7.79 mV", desc: "A/C Units, Heaters" },
-          { id: "1x6", size: "6.0 mm²", cores: 1, type: "LV Cu/PVC", air: "48 A", ground: "65 A", drop: "5.25 mV", desc: "Cookers, Main Feeds" },
-          { id: "1x10", size: "10 mm²", cores: 1, type: "LV Cu/PVC", air: "66 A", ground: "88 A", drop: "3.17 mV", desc: "Sub-panels" },
-          { id: "1x16", size: "16 mm²", cores: 1, type: "LV Cu/PVC", air: "87 A", ground: "113 A", drop: "2.03 mV", desc: "Distribution Feeders" },
-          { id: "1x25", size: "25 mm²", cores: 1, type: "LV Cu/PVC", air: "120 A", ground: "143 A", drop: "1.33 mV", desc: "Industrial" },
-          { id: "1x35", size: "35 mm²", cores: 1, type: "LV Cu/PVC", air: "150 A", ground: "171 A", drop: "0.99 mV", desc: "Industrial" },
-          { id: "1x50", size: "50 mm²", cores: 1, type: "LV Cu/PVC", air: "186 A", ground: "203 A", drop: "0.75 mV", desc: "Industrial" },
-          { id: "1x70", size: "70 mm²", cores: 1, type: "LV Cu/PVC", air: "238 A", ground: "248 A", drop: "0.55 mV", desc: "Heavy Industrial" },
-          { id: "1x95", size: "95 mm²", cores: 1, type: "LV Cu/PVC", air: "296 A", ground: "296 A", drop: "0.43 mV", desc: "Heavy Industrial" },
-          { id: "1x120", size: "120 mm²", cores: 1, type: "LV Cu/PVC", air: "346 A", ground: "337 A", drop: "0.36 mV", desc: "Heavy Industrial" },
-          { id: "1x150", size: "150 mm²", cores: 1, type: "LV Cu/PVC", air: "400 A", ground: "378 A", drop: "0.31 mV", desc: "Heavy Industrial" },
-          { id: "1x185", size: "185 mm²", cores: 1, type: "LV Cu/PVC", air: "466 A", ground: "426 A", drop: "0.27 mV", desc: "Heavy Industrial" },
-          { id: "1x240", size: "240 mm²", cores: 1, type: "LV Cu/PVC", air: "561 A", ground: "494 A", drop: "0.23 mV", desc: "Main Plant Feeder" },
-          
-          // --- LOW VOLTAGE (0.6/1 kV) MULTI CORE PVC ---
-          { id: "4x1.5", size: "1.5 mm²", cores: 4, type: "LV Cu/PVC", air: "21 A", ground: "28 A", drop: "20.2 mV", desc: "Control Circuits" },
-          { id: "4x2.5", size: "2.5 mm²", cores: 4, type: "LV Cu/PVC", air: "25 A", ground: "36 A", drop: "12.4 mV", desc: "3-Phase Sockets" },
-          { id: "4x4", size: "4.0 mm²", cores: 4, type: "LV Cu/PVC", air: "36 A", ground: "46 A", drop: "7.75 mV", desc: "3-Phase Motors" },
-          { id: "4x6", size: "6.0 mm²", cores: 4, type: "LV Cu/PVC", air: "45 A", ground: "60 A", drop: "5.21 mV", desc: "3-Phase Machines" },
-          { id: "4x10", size: "10 mm²", cores: 4, type: "LV Cu/PVC", air: "61 A", ground: "79 A", drop: "3.13 mV", desc: "Elevators, Pumps" },
-          { id: "4x16", size: "16 mm²", cores: 4, type: "LV Cu/PVC", air: "83 A", ground: "99 A", drop: "2.00 mV", desc: "Risers" },
-          { id: "4x25", size: "25 mm²", cores: 4, type: "LV Cu/PVC", air: "105 A", ground: "131 A", drop: "1.30 mV", desc: "Risers" },
-          { id: "4x35", size: "35 mm²", cores: 4, type: "LV Cu/PVC", air: "129 A", ground: "158 A", drop: "0.96 mV", desc: "Factory Distribution" },
-          { id: "4x50", size: "50 mm²", cores: 4, type: "LV Cu/PVC", air: "161 A", ground: "195 A", drop: "0.73 mV", desc: "Factory Distribution" },
-          
-          // --- MEDIUM VOLTAGE (12/20 kV) SINGLE CORE XLPE (Page 133) ---
-          { id: "MV-35", size: "35 mm²", cores: 1, type: "MV Cu/XLPE", air: "193 A", ground: "189 A", drop: "0.48 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-50", size: "50 mm²", cores: 1, type: "MV Cu/XLPE", air: "234 A", ground: "227 A", drop: "0.45 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-70", size: "70 mm²", cores: 1, type: "MV Cu/XLPE", air: "295 A", ground: "287 A", drop: "0.43 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-95", size: "95 mm²", cores: 1, type: "MV Cu/XLPE", air: "360 A", ground: "347 A", drop: "0.41 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-120", size: "120 mm²", cores: 1, type: "MV Cu/XLPE", air: "416 A", ground: "403 A", drop: "0.40 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-150", size: "150 mm²", cores: 1, type: "MV Cu/XLPE", air: "468 A", ground: "460 A", drop: "0.39 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-185", size: "185 mm²", cores: 1, type: "MV Cu/XLPE", air: "540 A", ground: "523 A", drop: "0.38 mh/km", desc: "12/20 kV Medium Voltage" },
-          { id: "MV-240", size: "240 mm²", cores: 1, type: "MV Cu/XLPE", air: "638 A", ground: "630 A", drop: "0.36 mh/km", desc: "12/20 kV Medium Voltage" },
-          
-          // --- OVERHEAD CONDUCTORS (AAC) (Page 33) ---
-          { id: "AAC-16", size: "16 mm²", cores: 1, type: "AAC Bare", air: "110 A", ground: "N/A", drop: "1.79 Ω/km", desc: "Overhead 7x1.7mm" },
-          { id: "AAC-25", size: "25 mm²", cores: 1, type: "AAC Bare", air: "145 A", ground: "N/A", drop: "1.17 Ω/km", desc: "Overhead 7x2.1mm" },
-          { id: "AAC-35", size: "35 mm²", cores: 1, type: "AAC Bare", air: "180 A", ground: "N/A", drop: "0.83 Ω/km", desc: "Overhead 7x2.5mm" },
-          { id: "AAC-50", size: "50 mm²", cores: 1, type: "AAC Bare", air: "225 A", ground: "N/A", drop: "0.57 Ω/km", desc: "Overhead 7x3.0mm" },
-          { id: "AAC-70", size: "70 mm²", cores: 1, type: "AAC Bare", air: "270 A", ground: "N/A", drop: "0.43 Ω/km", desc: "Overhead 19x2.1mm" },
-          { id: "AAC-95", size: "95 mm²", cores: 1, type: "AAC Bare", air: "340 A", ground: "N/A", drop: "0.30 Ω/km", desc: "Overhead 19x2.5mm" },
-        ];
-
-        // --- C. FASTENER DATABASE (Expanded ISO/Unified/Bearings) ---
-        const mechDatabase = [
-          // ISO COARSE
-          { id: "M1.6", type: "Standard", pitch: "0.35 mm", tap: "1.25 mm", clear: "1.8 mm", hex: "-" },
-          { id: "M2", type: "Standard", pitch: "0.40 mm", tap: "1.60 mm", clear: "2.2 mm", hex: "4 mm" },
-          { id: "M2.5", type: "Standard", pitch: "0.45 mm", tap: "2.05 mm", clear: "2.7 mm", hex: "5 mm" },
-          { id: "M3", type: "Standard", pitch: "0.50 mm", tap: "2.50 mm", clear: "3.4 mm", hex: "5.5 mm" },
-          { id: "M4", type: "Standard", pitch: "0.70 mm", tap: "3.30 mm", clear: "4.5 mm", hex: "7 mm" },
-          { id: "M5", type: "Standard", pitch: "0.80 mm", tap: "4.20 mm", clear: "5.5 mm", hex: "8 mm" },
-          { id: "M6", type: "Standard", pitch: "1.00 mm", tap: "5.00 mm", clear: "6.6 mm", hex: "10 mm" },
-          { id: "M8", type: "Standard", pitch: "1.25 mm", tap: "6.80 mm", clear: "9.0 mm", hex: "13 mm" },
-          { id: "M10", type: "Standard", pitch: "1.50 mm", tap: "8.50 mm", clear: "11.0 mm", hex: "17 mm" },
-          { id: "M12", type: "Standard", pitch: "1.75 mm", tap: "10.20 mm", clear: "13.5 mm", hex: "19 mm" },
-          { id: "M14", type: "Standard", pitch: "2.00 mm", tap: "12.00 mm", clear: "15.5 mm", hex: "22 mm" },
-          { id: "M16", type: "Standard", pitch: "2.00 mm", tap: "14.00 mm", clear: "17.5 mm", hex: "24 mm" },
-          { id: "M20", type: "Standard", pitch: "2.50 mm", tap: "17.50 mm", clear: "22.0 mm", hex: "30 mm" },
-          { id: "M24", type: "Standard", pitch: "3.00 mm", tap: "21.00 mm", clear: "26.0 mm", hex: "36 mm" },
-          { id: "M30", type: "Standard", pitch: "3.50 mm", tap: "26.50 mm", clear: "33.0 mm", hex: "46 mm" },
-
-          // ISO FINE
-          { id: "M8", type: "FINE", pitch: "1.00 mm", tap: "7.00 mm", clear: "9.0 mm", hex: "13 mm" },
-          { id: "M10", type: "FINE", pitch: "1.25 mm", tap: "8.80 mm", clear: "11.0 mm", hex: "17 mm" },
-          { id: "M12", type: "FINE", pitch: "1.25 mm", tap: "10.80 mm", clear: "13.5 mm", hex: "19 mm" },
-          { id: "M12", type: "FINE", pitch: "1.50 mm", tap: "10.50 mm", clear: "13.5 mm", hex: "19 mm" },
-          { id: "M14", type: "FINE", pitch: "1.50 mm", tap: "12.50 mm", clear: "15.5 mm", hex: "22 mm" },
-          { id: "M16", type: "FINE", pitch: "1.50 mm", tap: "14.50 mm", clear: "17.5 mm", hex: "24 mm" },
-          { id: "M20", type: "FINE", pitch: "1.50 mm", tap: "18.50 mm", clear: "22.0 mm", hex: "30 mm" },
-
-          // UNIFIED (UNC - Standard US)
-          { id: "1/4-20", type: "UNC", pitch: "20 TPI", tap: "5.1 mm", clear: "6.5 mm", hex: "7/16\"" },
-          { id: "5/16-18", type: "UNC", pitch: "18 TPI", tap: "6.6 mm", clear: "8.1 mm", hex: "1/2\"" },
-          { id: "3/8-16", type: "UNC", pitch: "16 TPI", tap: "8.0 mm", clear: "9.7 mm", hex: "9/16\"" },
-          { id: "1/2-13", type: "UNC", pitch: "13 TPI", tap: "10.8 mm", clear: "13.0 mm", hex: "3/4\"" },
-
-          // BEARINGS (Standard Metric)
-          { id: "608", type: "Bearing", pitch: "OD: 22mm", tap: "ID: 8mm", clear: "W: 7mm", hex: "Skate" },
-          { id: "6000", type: "Bearing", pitch: "OD: 26mm", tap: "ID: 10mm", clear: "W: 8mm", hex: "Std" },
-          { id: "6001", type: "Bearing", pitch: "OD: 28mm", tap: "ID: 12mm", clear: "W: 8mm", hex: "Std" },
-          { id: "6002", type: "Bearing", pitch: "OD: 32mm", tap: "ID: 15mm", clear: "W: 9mm", hex: "Std" },
-          { id: "6003", type: "Bearing", pitch: "OD: 35mm", tap: "ID: 17mm", clear: "W: 10mm", hex: "Std" },
-          { id: "6200", type: "Bearing", pitch: "OD: 30mm", tap: "ID: 10mm", clear: "W: 9mm", hex: "Hvy" },
-        ];
+        function toggleStores(id) {
+            const el = document.getElementById(`store-list-${id}`);
+            const btn = document.getElementById(`store-btn-${id}`);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                btn.innerHTML = `Close Stores`;
+                btn.classList.add('text-gray-400', 'underline', 'bg-transparent', 'hover:text-gray-600');
+                btn.classList.remove('bg-slate-800', 'text-white', 'hover:bg-slate-700');
+            } else {
+                el.classList.add('hidden');
+                btn.innerHTML = `<i data-lucide="shopping-cart" class="w-4 h-4 inline mr-2"></i> CHECK STORE AVAILABILITY`;
+                btn.classList.remove('text-gray-400', 'underline', 'bg-transparent', 'hover:text-gray-600');
+                btn.classList.add('bg-slate-800', 'text-white', 'hover:bg-slate-700');
+                lucide.createIcons();
+            }
+        }
 
         // ==========================================
-        // 3. THE REACT COMPONENT (Main App)
+        // 3. CORE LOGIC
         // ==========================================
 
-        const Standardizer = () => {
-          const [mode, setMode] = useState('ic'); 
-          const [query, setQuery] = useState('');
+        function getResults() {
+            const q = searchQuery.toLowerCase().trim();
+            if (!q) return [];
 
-          // Universal Search Logic with Smart Fallback
-          const results = useMemo(() => {
-            const q = query.toLowerCase().trim();
-            if (!q) return []; 
-
-            // 1. IC MODE: Standard Text Search Only
-            if (mode === 'ic') {
-              return icDatabase.filter(item => 
-                item.id.toLowerCase().includes(q) || 
-                item.name.toLowerCase().includes(q) || 
-                item.cat.toLowerCase().includes(q) ||
-                item.desc.toLowerCase().includes(q)
-              );
+            // IC Logic
+            if (currentMode === 'ic') {
+                return icDatabase.filter(item => 
+                    item.id.toLowerCase().includes(q) || 
+                    item.name.toLowerCase().includes(q) || 
+                    item.cat.toLowerCase().includes(q) ||
+                    item.desc.toLowerCase().includes(q)
+                );
             }
 
-            // 2. CABLE & MECH: Text Search + Smart Number Fallback
-            let db = mode === 'cable' ? cableDatabase : mechDatabase;
+            // Cable & Mech Logic (with number fallback)
+            let db = currentMode === 'cable' ? cableDatabase : mechDatabase;
             
-            // First, try standard text matching
             let matches = db.filter(item => {
-              if (mode === 'cable') {
-                return item.size.includes(q) || 
-                       item.type.toLowerCase().includes(q) ||
-                       item.desc.toLowerCase().includes(q) ||
-                       (q.includes('core') && item.cores.toString() === q.replace(/\D/g, ''));
-              } else {
-                return item.id.toLowerCase().includes(q);
-              }
+                if (currentMode === 'cable') {
+                    return item.size.includes(q) || 
+                           item.type.toLowerCase().includes(q) ||
+                           item.desc.toLowerCase().includes(q) ||
+                           (q.includes('core') && item.cores.toString() === q.replace(/\D/g, ''));
+                } else {
+                    return item.id.toLowerCase().includes(q);
+                }
             });
 
-            // If no exact matches found, check if query is a number and find closest
             if (matches.length === 0) {
-              const searchNum = parseFloat(q.match(/(\d+(\.\d+)?)/)?.[0]);
-              
-              if (!isNaN(searchNum)) {
-                // Calculate difference for every item
-                const withDiff = db.map(item => {
-                  // Extract number from "1.5 mm" or "M1.6"
-                  const itemValStr = mode === 'cable' ? item.size : item.id;
-                  const itemNum = parseFloat(itemValStr.match(/(\d+(\.\d+)?)/)?.[0]);
-                  
-                  if (isNaN(itemNum)) return null;
-                  
-                  return { 
-                    item, 
-                    diff: Math.abs(itemNum - searchNum) 
-                  };
-                }).filter(x => x !== null);
+                const searchNum = parseFloat(q.match(/(\d+(\.\d+)?)/)?.[0]);
+                if (!isNaN(searchNum)) {
+                    const withDiff = db.map(item => {
+                        const itemValStr = currentMode === 'cable' ? item.size : item.id;
+                        const itemNum = parseFloat(itemValStr.match(/(\d+(\.\d+)?)/)?.[0]);
+                        if (isNaN(itemNum)) return null;
+                        return { item, diff: Math.abs(itemNum - searchNum) };
+                    }).filter(x => x !== null);
+                    
+                    matches = withDiff.sort((a, b) => a.diff - b.diff).slice(0, 3).map(x => x.item);
+                }
+            }
+            return matches;
+        }
 
-                // Sort by difference (closest first) and take top 3
-                matches = withDiff.sort((a, b) => a.diff - b.diff).slice(0, 3).map(x => x.item);
-              }
+        function renderResults() {
+            const container = document.getElementById('resultsContainer');
+            const results = getResults();
+            const q = searchQuery.trim();
+
+            if (results.length === 0 && q !== '') {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i data-lucide="database" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+                        <p>No results found in ${currentMode.toUpperCase()} database.</p>
+                        <p class="text-xs text-gray-300 mt-2">Try searching by function or ID.</p>
+                    </div>`;
+                lucide.createIcons();
+                return;
             }
 
-            return matches;
-          }, [mode, query]);
-
-          // STYLES CONSTANTS
-          const activeColor = {
-            ic: 'bg-blue-600',
-            cable: 'bg-orange-600',
-            mech: 'bg-emerald-600'
-          };
-
-          const activeBorder = {
-            ic: 'border-l-blue-600',
-            cable: 'border-l-orange-600',
-            mech: 'border-l-emerald-600'
-          };
-
-          return (
-            <div className="min-h-screen bg-gray-50 text-slate-800 font-sans p-4 md:p-8">
-              <div className="max-w-3xl mx-auto">
+            container.innerHTML = results.map((item, idx) => {
+                const style = activeStyles[currentMode];
                 
-                {/* HEADER */}
-                <div className="text-center mb-8">
-                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-2">
-                    ENGINEERING <span className="text-blue-600">DATA PULSE</span>
-                  </h1>
-                  <p className="text-slate-500 text-sm mb-3">
-                    Standard Reference for Campus Pulse Engineers
-                  </p>
-                  <a 
-                    href="https://docs.google.com/forms/d/e/1FAIpQLScNmT_XVHhWN_9nLpIXzPuef7tJm-bJKC4FQF5vC9-TTzR2Og/viewform?usp=publish-editor"
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition-colors"
-                  >
-                    <MessageSquarePlus size={14} />
-                    Give Feedback
-                  </a>
-                </div>
-
-                {/* TAB NAVIGATION */}
-                <div className="flex rounded-xl bg-white shadow-sm p-1 mb-6 border border-gray-200">
-                  {[
-                    { id: 'ic', label: 'IC CHIPS', icon: <Cpu size={18} /> },
-                    { id: 'cable', label: 'CABLES', icon: <Zap size={18} /> },
-                    { id: 'mech', label: 'MECHANICAL', icon: <Settings size={18} /> }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setMode(tab.id)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-200 ${
-                        mode === tab.id 
-                          ? `${activeColor[tab.id]} text-white shadow-md` 
-                          : 'text-slate-500 hover:bg-gray-100'
-                      }`}
-                    >
-                      {tab.icon} {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* SEARCH BAR */}
-                <div className="relative mb-8 group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors">
-                    <Search size={20} />
-                  </div>
-                  <input
-                    type="text"
-                    className="w-full pl-11 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl text-lg outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm placeholder:text-gray-300"
-                    placeholder={
-                      mode === 'ic' ? "Search '7490', 'Arduino', 'Sensor'..." : 
-                      mode === 'cable' ? "Search '35mm', 'MV', 'Overhead'..." : "Search 'M6', 'UNC', 'Bearing'..."
-                    }
-                    onChange={(e) => setQuery(e.target.value)}
-                    value={query}
-                    autoFocus
-                  />
-                </div>
-
-                {/* RESULTS GRID */}
-                <div className="space-y-4">
-                  {results.length === 0 && query !== '' && (
-                    <div className="text-center py-12 text-gray-400">
-                      <Database size={48} className="mx-auto mb-3 opacity-20" />
-                      <p>No results found in {mode.toUpperCase()} database.</p>
-                      <p className="text-xs text-gray-300 mt-2">Try searching by function (e.g. "Counter") or ID (e.g. "7490")</p>
-                    </div>
-                  )}
-
-                  {results.map((item, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 ${activeBorder[mode]} hover:shadow-md transition-shadow`}
-                    >
-                      
-                      {/* === IC CARD === */}
-                      {mode === 'ic' && (
-                        <>
-                          <div className="flex justify-between items-start mb-3">
+                // IC CARD HTML
+                if (currentMode === 'ic') {
+                    return `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 ${style.border} hover:shadow-md transition-shadow fade-in">
+                        <div class="flex justify-between items-start mb-3">
                             <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-2xl font-black text-blue-600 tracking-tight">{item.id}</span>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200">{item.fam}</span>
-                              </div>
-                              <h3 className="font-semibold text-lg text-slate-800">{item.name}</h3>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-2xl font-black ${style.text} tracking-tight">${item.id}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200">${item.fam}</span>
+                                </div>
+                                <h3 class="font-semibold text-lg text-slate-800">${item.name}</h3>
                             </div>
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100">
-                              {item.cat}
-                            </span>
-                          </div>
-                          
-                          <div className="text-slate-600 text-sm leading-relaxed mb-4 border-l-2 border-gray-200 pl-3 py-1">
-                            {item.desc}
-                          </div>
-                          
-                          <div className="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-3">
-                            <span>{item.pins === "Mod" ? "MODULE" : `Package: DIP-${item.pins}`}</span>
-                            <span>{item.pins === "Mod" ? "" : `${item.pins} PINS`}</span>
-                          </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-bold ${style.light} ${style.text} border border-blue-100">${item.cat}</span>
+                        </div>
+                        <div class="text-slate-600 text-sm leading-relaxed mb-4 border-l-2 border-gray-200 pl-3 py-1">
+                            ${item.desc}
+                        </div>
+                        <div class="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-3">
+                            <span>${item.pins === "Mod" ? "MODULE" : `Package: DIP-${item.pins}`}</span>
+                            <span>${item.pins === "Mod" ? "" : `${item.pins} PINS`}</span>
+                        </div>
+                        
+                        <div class="mt-3">
+                             <div id="store-list-${idx}" class="hidden p-3 bg-gray-50 rounded-lg border border-gray-200 mb-2">
+                                <div class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Search for "${item.id}" at:</div>
+                                <div class="flex flex-col gap-2">
+                                    ${stores.map(store => `
+                                        <a href="${store.url(item.id)}" target="_blank" class="flex justify-between items-center p-2 rounded border transition-all hover:shadow-md hover:-translate-y-0.5"
+                                           style="background-color: ${store.bg}; border-color: ${store.color}30; border-left-width: 4px; border-left-color: ${store.color}">
+                                            <span class="font-bold text-sm text-slate-800">${store.name}</span>
+                                            <span class="text-xs flex items-center gap-1 font-semibold" style="color: ${store.color}">OPEN <i data-lucide="external-link" class="w-3 h-3"></i></span>
+                                        </a>
+                                    `).join('')}
+                                </div>
+                             </div>
+                             <button onclick="toggleStores(${idx})" id="store-btn-${idx}" class="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-md flex items-center justify-center gap-2 transition-colors text-sm font-bold shadow-sm">
+                                <i data-lucide="shopping-cart" class="w-4 h-4"></i> CHECK STORE AVAILABILITY
+                             </button>
+                        </div>
+                    </div>`;
+                }
 
-                          {/* THE PROCUREMENT TOOL */}
-                          <StoreFinder query={item.id} />
-                        </>
-                      )}
-
-                      {/* === CABLE CARD === */}
-                      {mode === 'cable' && (
-                        <>
-                          <div className="flex justify-between items-start mb-4">
+                // CABLE CARD HTML
+                if (currentMode === 'cable') {
+                    return `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 ${style.border} hover:shadow-md transition-shadow fade-in">
+                        <div class="flex justify-between items-start mb-4">
                             <div>
-                              <h3 className="text-2xl font-black text-orange-600 mb-1">{item.size}</h3>
-                              <div className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${item.cores > 1 ? 'bg-purple-500' : 'bg-green-500'}`}></span>
-                                {item.type} • {item.cores} CORE{item.cores > 1 ? 'S' : ''}
-                              </div>
+                                <h3 class="text-2xl font-black ${style.text} mb-1">${item.size}</h3>
+                                <div class="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full ${item.cores > 1 ? 'bg-purple-500' : 'bg-green-500'}"></span>
+                                    ${item.type} • ${item.cores} CORE${item.cores > 1 ? 'S' : ''}
+                                </div>
                             </div>
-                            <div className="text-right text-xs text-gray-400 italic max-w-[120px]">
-                              {item.desc}
+                            <div class="text-right text-xs text-gray-400 italic max-w-[120px]">${item.desc}</div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-orange-50 rounded-lg p-3 text-center border border-orange-100">
+                                <div class="text-[10px] font-bold text-orange-400 uppercase mb-1">IN GROUND</div>
+                                <div class="text-lg font-black text-orange-700">${item.ground}</div>
                             </div>
-                          </div>
+                            <div class="bg-orange-50 rounded-lg p-3 text-center border border-orange-100">
+                                <div class="text-[10px] font-bold text-orange-400 uppercase mb-1">IN AIR</div>
+                                <div class="text-lg font-black text-orange-700">${item.air}</div>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-3 text-center border border-slate-200">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase mb-1">${item.type.includes("AAC") ? "R (Ω/km)" : "V-DROP / L"}</div>
+                                <div class="text-lg font-black text-slate-700">${item.drop}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
 
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-100">
-                              <div className="text-[10px] font-bold text-orange-400 uppercase mb-1">IN GROUND</div>
-                              <div className="text-lg font-black text-orange-700">{item.ground}</div>
+                // MECH CARD HTML
+                if (currentMode === 'mech') {
+                    return `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 ${style.border} hover:shadow-md transition-shadow fade-in">
+                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                            <span class="text-2xl font-black ${style.text}">${item.id}</span>
+                            ${item.type === 'FINE' 
+                                ? `<span class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-600 border border-red-200">FINE PITCH</span>` 
+                                : `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">${item.type}</span>`}
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="p-3 text-center rounded border border-dashed border-gray-300">
+                                <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">${item.type === 'Bearing' ? "OUTER DIA" : "PITCH"}</div>
+                                <div class="text-lg font-bold text-gray-700">${item.pitch}</div>
                             </div>
-                            <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-100">
-                              <div className="text-[10px] font-bold text-orange-400 uppercase mb-1">IN AIR</div>
-                              <div className="text-lg font-black text-orange-700">{item.air}</div>
+                            <div class="p-3 text-center rounded bg-emerald-600 text-white shadow-sm transform scale-105">
+                                <div class="text-[10px] font-bold text-emerald-200 uppercase mb-1">${item.type === 'Bearing' ? "INNER DIA" : "TAP DRILL"}</div>
+                                <div class="text-xl font-black">${item.tap}</div>
                             </div>
-                            <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-200">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">
-                                {item.type.includes("AAC") ? "R (Ω/km)" : "V-DROP / L"}
-                              </div>
-                              <div className="text-lg font-black text-slate-700">{item.drop}</div>
+                            <div class="p-3 text-center rounded bg-gray-5 border border-gray-200">
+                                <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">${item.type === 'Bearing' ? "WIDTH" : "SPANNER"}</div>
+                                <div class="text-lg font-bold text-gray-700">${item.type === 'Bearing' ? item.clear : item.hex}</div>
                             </div>
-                          </div>
-                          <div className="text-[10px] text-center text-gray-300 mt-2 font-mono">
-                            *Source: Elsewedy Cables Catalogue
-                          </div>
-                        </>
-                      )}
+                        </div>
+                    </div>`;
+                }
+            }).join('');
+            
+            lucide.createIcons();
+        }
 
-                      {/* === MECH CARD === */}
-                      {mode === 'mech' && (
-                        <>
-                          <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-                            <span className="text-2xl font-black text-emerald-600">{item.id}</span>
-                            {item.type === 'FINE' 
-                              ? <span className="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-600 border border-red-200">FINE PITCH</span>
-                              : <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">{item.type}</span>
-                            }
-                          </div>
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderResults();
+        });
 
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="p-3 text-center rounded border border-dashed border-gray-300">
-                              <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">{item.type === 'Bearing' ? "OUTER DIA" : "PITCH"}</div>
-                              <div className="text-lg font-bold text-gray-700">{item.pitch}</div>
-                            </div>
-                            <div className="p-3 text-center rounded bg-emerald-600 text-white shadow-sm transform scale-105">
-                              <div className="text-[10px] font-bold text-emerald-200 uppercase mb-1">{item.type === 'Bearing' ? "INNER DIA" : "TAP DRILL"}</div>
-                              <div className="text-xl font-black">{item.tap}</div>
-                            </div>
-                            <div className="p-3 text-center rounded bg-gray-50 border border-gray-200">
-                              <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">{item.type === 'Bearing' ? "WIDTH" : "SPANNER"}</div>
-                              <div className="text-lg font-bold text-gray-700">{item.type === 'Bearing' ? item.clear : item.hex}</div>
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        };
-
-        // RENDER THE APP
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<Standardizer />);
+        // Initialize
+        lucide.createIcons();
+        renderResults();
 
     </script>
 </body>
