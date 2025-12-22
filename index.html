@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineering Data Pulse (Expanded)</title>
+    <title>Engineering Data Pulse (Smart Search)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -328,11 +328,12 @@
           const [mode, setMode] = useState('ic'); 
           const [query, setQuery] = useState('');
 
-          // Universal Search Logic with Categories
+          // Universal Search Logic with Smart Fallback
           const results = useMemo(() => {
             const q = query.toLowerCase().trim();
             if (!q) return []; 
 
+            // 1. IC MODE: Standard Text Search Only
             if (mode === 'ic') {
               return icDatabase.filter(item => 
                 item.id.toLowerCase().includes(q) || 
@@ -341,18 +342,47 @@
                 item.desc.toLowerCase().includes(q)
               );
             }
-            if (mode === 'cable') {
-              return cableDatabase.filter(item => 
-                item.size.includes(q) || 
-                item.type.toLowerCase().includes(q) ||
-                item.desc.toLowerCase().includes(q) ||
-                (q.includes('core') && item.cores.toString() === q.replace(/\D/g, ''))
-              );
+
+            // 2. CABLE & MECH: Text Search + Smart Number Fallback
+            let db = mode === 'cable' ? cableDatabase : mechDatabase;
+            
+            // First, try standard text matching
+            let matches = db.filter(item => {
+              if (mode === 'cable') {
+                return item.size.includes(q) || 
+                       item.type.toLowerCase().includes(q) ||
+                       item.desc.toLowerCase().includes(q) ||
+                       (q.includes('core') && item.cores.toString() === q.replace(/\D/g, ''));
+              } else {
+                return item.id.toLowerCase().includes(q);
+              }
+            });
+
+            // If no exact matches found, check if query is a number and find closest
+            if (matches.length === 0) {
+              const searchNum = parseFloat(q.match(/(\d+(\.\d+)?)/)?.[0]);
+              
+              if (!isNaN(searchNum)) {
+                // Calculate difference for every item
+                const withDiff = db.map(item => {
+                  // Extract number from "1.5 mm" or "M1.6"
+                  const itemValStr = mode === 'cable' ? item.size : item.id;
+                  const itemNum = parseFloat(itemValStr.match(/(\d+(\.\d+)?)/)?.[0]);
+                  
+                  if (isNaN(itemNum)) return null;
+                  
+                  return { 
+                    item, 
+                    diff: Math.abs(itemNum - searchNum) 
+                  };
+                }).filter(x => x !== null);
+
+                // Sort by difference (closest first) and take top 3
+                matches = withDiff.sort((a, b) => a.diff - b.diff).slice(0, 3).map(x => x.item);
+              }
             }
-            if (mode === 'mech') {
-              return mechDatabase.filter(item => item.id.toLowerCase().includes(q));
-            }
-            return [];
+
+            return matches;
           }, [mode, query]);
 
           // STYLES CONSTANTS
@@ -436,6 +466,7 @@
                     <div className="text-center py-12 text-gray-400">
                       <Database size={48} className="mx-auto mb-3 opacity-20" />
                       <p>No results found in {mode.toUpperCase()} database.</p>
+                      <p className="text-xs text-gray-300 mt-2">Try searching by function (e.g. "Counter") or ID (e.g. "7490")</p>
                     </div>
                   )}
 
@@ -549,7 +580,7 @@
           );
         };
 
-        // RENDER
+        // RENDER THE APP
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<Standardizer />);
 
